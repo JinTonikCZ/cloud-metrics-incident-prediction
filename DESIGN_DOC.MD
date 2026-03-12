@@ -57,27 +57,27 @@ flowchart TD
     classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
     classDef test fill:#fffde7,stroke:#fbc02d,stroke-width:2px,color:#000;
 
-    subgraph Data_Processing [Stage A: Feature Engineering]
-        S1[generate_data.py]:::script -->|Raw Telemetry| DA1[(synthetic_metrics.csv)]:::data
-        DA1 --> S2[build_windows.py]:::script
-        S2 -->|Statistical Aggregation| S2_F[Mean, Std, Trend Calculation]:::script
-        S2_F -.->|Integrity Check| T1[tests/test_logic.py]:::test
+    subgraph Data_Processing [Stage A: Data Engineering]
+        S1[generate_data.py]:::script -->|Raw CSV Data| DA1[(synthetic_metrics.csv)]:::data
+        DA1 -->|Time-series stream| S2[build_windows.py]:::script
+        S2 -->|30-min Rolling Window| S2_F[Feature Extraction]:::script
+        S2_F -.->|Logic Verification| T1[tests/test_logic.py]:::test
     end
 
-    subgraph Training_Logic [Stage B: Strict Validation]
-        S2_F --> DA2[(features.csv)]:::data
-        DA2 --> S3[train_model.py]:::script
-        S3 -->|Time-Series Split| TSet{No-Shuffle 70/30 Split}:::model
-        TSet -->|Training Pool| TrSet[(Train Data)]:::data
-        TSet -->|Hold-out Pool| TeSet[(Test Data)]:::data
+   subgraph Training_Logic [Stage B: Strict Validation]
+        S2_F -->|Vectors & Targets| DA2[(features.csv)]:::data
+        DA2 -->|Chronological Input| S3[train_model.py]:::script
+        S3 -->|Split without Shuffling| TSet{70/30 Split}:::model
+        TSet -->|Past Samples| TrSet[(Train Set)]:::data
+        TSet -->|Future Samples| TeSet[(Test Set)]:::data
     end
 
-    subgraph Modeling_Output [Stage C: Predictive Insights]
-        TrSet --> RF[Random Forest Classifier]:::model
-        RF -->|Pipeline Export| MO1[random_forest_pipeline.pkl]:::model
-        MO1 --> S4[evaluate.py]:::script
+   subgraph Modeling_Output [Stage C: Predictive Insights]
+        TrSet -->|Balanced Learning| RF[Random Forest]:::model
+        RF -->|Pickle Serialization| MO1[random_forest.pkl]:::model
+        MO1 -->|Inference on Test Data| S4[evaluate.py]:::script
         TeSet --> S4
-        S4 -->|Visual Proof| M1{{risk_scores.png}}:::data
+        S4 -->|Risk vs Incident Plot| M1{{risk_scores.png}}:::data
     end
 ```
 
@@ -103,10 +103,21 @@ High-quality, labeled datasets of severe cloud infrastructure outages are rarely
 
 **How it's generated:** We use statistical distributions (Normal for CPU/Memory, Lognormal for Latency, Exponential for Error Rates) and inject programmatic spikes and trends to simulate failures.
 
----
+## 4. Engineering Decisions
 
-## 4. Project Details: The ML Pipeline
-This section details the inner workings of the `src/` directory.
+### 4.1 Data Strategy: Why Synthetic Data?
+High-quality, labeled datasets of severe cloud infrastructure outages are rarely open-sourced due to strict NDAs. By synthesizing the data, we achieve:
+1. **Total Control:** We can programmatically define the exact lifecycle of an incident (normal state -> degradation -> active incident -> recovery).
+2. **Realistic Imbalance:** We explicitly engineered a realistic class imbalance (~95% normal, ~5% incidents) to properly test the model's alerting capabilities without artificial balancing.
+
+### 4.2 Feature Aggregation
+Instead of feeding 30 raw minutes (120 dimensions) into the model, we compute statistical summaries (mean, std, min, max, diff). This mitigates the "curse of dimensionality" and helps tree-based models find split points more effectively by capturing momentum and volatility.
+
+### 4.3 Strict Time-Based Split
+We explicitly avoid random shuffling. In time-series tasks, shuffling causes **Data Leakage** (the model accidentally learns from future events to predict the past). Our 70/30 split is strictly chronological.
+
+### 4.4 PR AUC over Accuracy
+Because the dataset is highly imbalanced, Accuracy is a misleading metric (always predicting "0" would yield 95% accuracy). We prioritize **Precision-Recall AUC** to measure how well the model handles the minority class (incidents) while minimizing "alert fatigue."
 
 ```mermaid
 flowchart TD
