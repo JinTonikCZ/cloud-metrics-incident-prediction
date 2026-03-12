@@ -47,6 +47,60 @@ This diagram illustrates the logical flow of information. The project begins wit
 ---
 
 ## 3. Data Strategy: Synthetic Metrics
+
+## 3. Project Details: The ML Pipeline Deep-Dive
+*(Author's Original Diagram: Detailed interaction between modules and data layers)*
+
+```mermaid
+flowchart TD
+    %% Colors and Styling for high readability
+    classDef script fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
+    classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
+    classDef test fill:#fffde7,stroke:#fbc02d,stroke-width:2px,color:#000;
+
+    subgraph Data_Processing [Stage A: Feature Engineering]
+        S1[generate_data.py]:::script -->|Raw Telemetry| DA1[(synthetic_metrics.csv)]:::data
+        DA1 --> S2[build_windows.py]:::script
+        S2 -->|Statistical Aggregation| S2_F[Mean, Std, Trend Calculation]:::script
+        S2_F -.->|Integrity Check| T1[tests/test_logic.py]:::test
+    end
+
+    subgraph Training_Logic [Stage B: Strict Validation]
+        S2_F --> DA2[(features.csv)]:::data
+        DA2 --> S3[train_model.py]:::script
+        S3 -->|Time-Series Split| TSet{No-Shuffle 70/30 Split}:::model
+        TSet -->|Training Pool| TrSet[(Train Data)]:::data
+        TSet -->|Hold-out Pool| TeSet[(Test Data)]:::data
+    end
+
+    subgraph Modeling_Output [Stage C: Predictive Insights]
+        TrSet --> RF[Random Forest Classifier]:::model
+        RF -->|Pipeline Export| MO1[random_forest_pipeline.pkl]:::model
+        MO1 --> S4[evaluate.py]:::script
+        TeSet --> S4
+        S4 -->|Visual Proof| M1{{risk_scores.png}}:::data
+    end
+
+Technical Commentary on Pipeline Stages:
+A. Data Processing & Logic
+In this stage, raw telemetry is transformed into structured features.
+
+Key Innovation: Instead of feeding raw noise, we use a 30-minute rolling window to calculate "momentum" (Trend) and "volatility" (Std).
+
+Reliability: Verified by test_logic.py to prevent "garbage-in, garbage-out" scenarios.
+
+B. Strict Training Logic (Anti-Leakage)
+The Problem: Random shuffling would allow the model to learn from "future" data.
+
+The Solution: A strict chronological split. The model is trained on the past and tested on the unseen future.
+
+C. Modeling & Insight Generation
+Model Selection: Random Forest was chosen for its ability to handle non-linear spikes.
+
+Business Value: The output risk_scores.png proves the model crosses the Alerting Threshold (0.5) before the actual incident occurs.
+
+
 **Why Synthetic Data?**
 High-quality, labeled datasets of severe cloud infrastructure outages are rarely open-sourced due to strict NDAs and security policies. By synthesizing the data, we achieve:
 1. **Total Control:** We can programmatically define the exact lifecycle of an incident (normal state -> degradation -> active incident -> recovery).
