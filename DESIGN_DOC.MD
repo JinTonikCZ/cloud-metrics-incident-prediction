@@ -46,8 +46,6 @@ This diagram illustrates the logical flow of information. The project begins wit
 
 ---
 
-## 3. Data Strategy: Synthetic Metrics
-
 ## 3. Project Details: The ML Pipeline Deep-Dive
 *(Author's Original Diagram: Detailed interaction between modules and data layers)*
 
