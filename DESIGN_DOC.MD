@@ -81,6 +81,7 @@ flowchart TD
         TeSet --> S4
         S4 -->|Visual Proof| M1{{risk_scores.png}}:::data
     end
+```
 
 Technical Commentary on Pipeline Stages:
 A. Data Processing & Logic
