@@ -1,79 +1,52 @@
 import pandas as pd
-import os
 import joblib
+import os
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 
-def main():
+def train_alerting_models(features_path: str, target_path: str) -> None:
     """
-    Splits the data safely over time, scales features, and trains ML models.
+    Trains and persists predictive models using a chronological split.
     """
-    print("Loading extracted features...")
-    X = pd.read_csv('../data/features.csv')
-    y = pd.read_csv('../data/target.csv')['target']
+    X = pd.read_csv(features_path)
+    y = pd.read_csv(target_path).values.ravel()
 
-    # ==========================================
-    # DATA SPLITTING (CRITICAL STEP)
-    # ==========================================
-    # In Time-Series, we CANNOT use random cross-validation or random shuffling.
-    # If we randomize, the model learns from "future" data to predict the "past" (Data Leakage).
-    # Therefore, we strictly set shuffle=False. We train on the past, test on the future.
-    # We aim for roughly: 70% Train, 15% Validation, 15% Test.
+    # CRITICAL: We use shuffle=False to respect the temporal nature of the data.
+    # Training on the past, validating on the future.
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, shuffle=False
+    )
+
+    print(f"Training on {len(X_train)} samples, Testing on {len(X_test)}")
+
+    # Define a Pipeline: Scaling + Model
+    # Random Forest is our primary model due to its handling of non-linear trends
+    rf_pipeline = Pipeline([
+        ('scaler', StandardScaler()),
+        ('rf', RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced'))
+    ])
+
+    rf_pipeline.fit(X_train, y_train)
     
-    # 1. Split off the last 15% as the final Test Set
-    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.15, shuffle=False)
+    # Save the model and data for evaluation
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    model_dir = os.path.join(BASE_DIR, 'models')
+    data_dir = os.path.join(BASE_DIR, 'data')
+    os.makedirs(model_dir, exist_ok=True)
+
+    joblib.dump(rf_pipeline, os.path.join(model_dir, 'random_forest_pipeline.pkl'))
     
-    # 2. Split the remaining 85% into Train and Validation. 
-    # (0.1765 of 85% equals ~15% of the total dataset)
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.1765, shuffle=False)
-
-    print(f"Data split sequentially: Train ({len(X_train)}), Val ({len(X_val)}), Test ({len(X_test)})")
-
-    # ==========================================
-    # FEATURE SCALING
-    # ==========================================
-    # Linear models (like Logistic Regression) are sensitive to feature scales.
-    # CPU is 0-100, latency can be thousands, error rate is 0.0-1.0. 
-    # We standardize them to mean=0, std=1.
-    scaler = StandardScaler()
+    # Save test sets for the evaluation script
+    X_test.to_csv(os.path.join(data_dir, 'X_test.csv'), index=False)
+    pd.Series(y_test).to_csv(os.path.join(data_dir, 'y_test.csv'), index=False)
     
-    # IMPORTANT: We ONLY fit the scaler on the Training data to prevent data leakage.
-    # Then we apply it to Validation and Test data.
-    X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-    X_val_scaled = pd.DataFrame(scaler.transform(X_val), columns=X_val.columns)
-    X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
-
-    # ==========================================
-    # MODEL TRAINING
-    # ==========================================
-    # Our data is highly imbalanced (~95% normal, ~5% incidents).
-    # We use class_weight='balanced' so the model pays more attention to the minority class (incidents),
-    # penalizing mistakes on incidents much heavier than false alarms on normal data.
-
-    print("Training Baseline Model: Logistic Regression...")
-    lr_model = LogisticRegression(max_iter=1000, random_state=42, class_weight='balanced')
-    lr_model.fit(X_train_scaled, y_train)
-
-    print("Training Primary Model: Random Forest...")
-    # Tree-based models handle non-linear relationships well (e.g., when CPU AND Latency spike together).
-    rf_model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42, class_weight='balanced', n_jobs=-1)
-    rf_model.fit(X_train, y_train) # Note: Random Forest doesn't actually require scaled features, but we use raw X_train.
-
-    # ==========================================
-    # SAVING ARTIFACTS
-    # ==========================================
-    # Save the trained models and the test datasets so the evaluation script can use them.
-    os.makedirs('../models', exist_ok=True)
-    joblib.dump(scaler, '../models/scaler.pkl')
-    joblib.dump(lr_model, '../models/logistic_regression.pkl')
-    joblib.dump(rf_model, '../models/random_forest.pkl')
-
-    # Save splits
-    X_test.to_csv('../data/X_test.csv', index=False)
-    y_test.to_csv('../data/y_test.csv', index=False)
-    print("Models trained and artifacts saved to disk.")
+    print("Models and test datasets saved successfully.")
 
 if __name__ == "__main__":
-    main()
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    train_alerting_models(
+        os.path.join(BASE_DIR, 'data', 'features.csv'),
+        os.path.join(BASE_DIR, 'data', 'target.csv')
+    )

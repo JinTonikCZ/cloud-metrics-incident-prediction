@@ -2,111 +2,70 @@ import pandas as pd
 import numpy as np
 import os
 
-# Fix the random seed to ensure that every time we run this script,
-# we get the exact same dataset. This is crucial for reproducibility.
-np.random.seed(42)
-
-def generate_synthetic_data(num_steps=10000, num_incidents=50):
+def generate_metrics_data(n_minutes: int = 15000) -> pd.DataFrame:
     """
-    Generates a synthetic time-series dataset simulating cloud infrastructure metrics.
+    Simulates a synthetic cloud monitoring dataset.
     
-    The generation follows a specific lifecycle for anomalies:
-    1. Normal operation (baseline + noise)
-    2. Gradual degradation (metrics slowly worsen)
-    3. Active incident (metrics breach thresholds, errors spike)
-    4. Recovery (metrics return to baseline)
+    The simulation includes:
+    - Normal noisy operations (Gaussian noise)
+    - Gradual degradation (Trend injection)
+    - Critical incidents (Spikes and sustained high load)
     
     Args:
-        num_steps (int): Total number of minutes to simulate.
-        num_incidents (int): Number of incidents to inject into the timeline.
+        n_minutes (int): Total duration of the generated data in minutes.
         
     Returns:
-        pd.DataFrame: DataFrame containing timestamps, metrics, and incident labels.
+        pd.DataFrame: A dataset with CPU, RAM, Latency, and Error Rate.
     """
-    print(f"Generating {num_steps} minutes of synthetic cloud monitoring data...")
+    print(f"--- Data Generation: Simulating {n_minutes} minutes of infrastructure metrics ---")
     
-    # ==========================================
-    # STEP 1: Generate Base Background Noise
-    # ==========================================
-    # We use different statistical distributions to make metrics look realistic:
-    # - Normal distribution for CPU and Memory (fluctuating around a mean)
-    # - Lognormal distribution for Latency (mostly low, with occasional long tails/spikes)
-    # - Exponential distribution for Error Rate (mostly near zero)
+    np.random.seed(42)  # For reproducibility
+    t = np.arange(n_minutes)
     
-    cpu_usage = np.random.normal(loc=30, scale=5, size=num_steps)        # Mean 30%, Std 5%
-    memory_usage = np.random.normal(loc=50, scale=2, size=num_steps)     # Mean 50%, Std 2%
-    latency = np.random.lognormal(mean=3, sigma=0.5, size=num_steps)     # Log scale for ms
-    error_rate = np.random.exponential(scale=0.01, size=num_steps)       # Mostly 0.0 - 0.05
+    # 1. CPU Usage (%) - Modeled as a baseline with daily seasonality and noise
+    cpu = 30 + 5 * np.sin(2 * np.pi * t / 1440) + np.random.normal(0, 3, n_minutes)
     
-    # Array to store our ground truth labels (1 = incident occurring right now, 0 = normal)
-    is_incident = np.zeros(num_steps, dtype=int)
+    # 2. Memory Usage (%) - Often stays stable with occasional leaks
+    memory = 40 + np.cumsum(np.random.normal(0, 0.01, n_minutes))
     
-    # ==========================================
-    # STEP 2: Inject Incidents
-    # ==========================================
-    # Select random timestamps where incidents will start.
-    # We leave margins (100 steps) at the beginning and end to avoid index out-of-bounds errors.
-    incident_starts = np.random.choice(range(100, num_steps - 100), size=num_incidents, replace=False)
-    incident_starts.sort()
+    # 3. Latency (ms) - Lognormal distribution is more realistic for response times
+    latency = np.random.lognormal(mean=2, sigma=0.3, size=n_minutes)
     
-    for start in incident_starts:
-        # Define random durations for each phase of the incident lifecycle
-        degradation_len = np.random.randint(15, 40) # Phase 1: Worsening over 15-40 mins
-        incident_len = np.random.randint(10, 30)    # Phase 2: Active fire for 10-30 mins
-        recovery_len = np.random.randint(10, 20)    # Phase 3: Fixing it takes 10-20 mins
-        
-        # Calculate array indices for these phases
-        deg_idx = range(start - degradation_len, start)
-        inc_idx = range(start, start + incident_len)
-        rec_idx = range(start + incident_len, start + incident_len + recovery_len)
-        
-        # --- Phase 1: Degradation ---
-        # CPU and Latency slowly increase linearly before the actual incident hits.
-        cpu_usage[deg_idx] += np.linspace(0, 40, degradation_len)
-        latency[deg_idx] += np.linspace(0, 200, degradation_len)
-        
-        # --- Phase 2: Active Incident ---
-        # Metrics go critical. We label these exact minutes as '1' in our target variable.
-        is_incident[inc_idx] = 1
-        cpu_usage[inc_idx] = np.random.normal(loc=95, scale=3, size=incident_len)     # CPU pegs near 100%
-        memory_usage[inc_idx] += np.random.normal(loc=30, scale=5, size=incident_len) # Sudden memory leak
-        latency[inc_idx] = np.random.lognormal(mean=6, sigma=0.8, size=incident_len)  # Latency skyrockets
-        error_rate[inc_idx] = np.random.uniform(0.1, 0.5, size=incident_len)          # 10% to 50% of requests fail
-        
-        # --- Phase 3: Recovery ---
-        # Metrics smoothly transition back down to their baseline values.
-        cpu_usage[rec_idx] = np.linspace(cpu_usage[rec_idx[0]-1], 30, recovery_len)
-        latency[rec_idx] = np.linspace(latency[rec_idx[0]-1], 20, recovery_len)
-
-    # ==========================================
-    # STEP 3: Data Cleaning and Formatting
-    # ==========================================
-    # Physical limits: percentages cannot go below 0 or above 100.
-    cpu_usage = np.clip(cpu_usage, 0, 100)
-    memory_usage = np.clip(memory_usage, 0, 100)
-    error_rate = np.clip(error_rate, 0, 1)
-
-    # Construct the final dataset with timestamps starting from a fixed date
+    # 4. Error Rate (%) - Low baseline with sudden spikes
+    error_rate = np.random.exponential(scale=0.5, size=n_minutes)
+    
     df = pd.DataFrame({
-        'timestamp': pd.date_range(start='2024-01-01', periods=num_steps, freq='min'),
-        'cpu_usage': cpu_usage,
-        'memory_usage': memory_usage,
+        'timestamp': pd.date_range(start='2026-01-01', periods=n_minutes, freq='min'),
+        'cpu_usage': np.clip(cpu, 0, 100),
+        'memory_usage': np.clip(memory, 0, 100),
         'latency': latency,
         'error_rate': error_rate,
-        'is_incident': is_incident
+        'is_incident': 0
     })
-    
+
+    # 5. Incident Injection
+    # We manually inject 15 incidents to ensure the model has something to learn
+    for _ in range(15):
+        start = np.random.randint(100, n_minutes - 200)
+        duration = np.random.randint(20, 60)
+        
+        # Degradation phase: Metrics start rising before the actual failure
+        df.loc[start-15:start, 'cpu_usage'] += np.linspace(0, 40, 16)
+        df.loc[start-15:start, 'latency'] *= 2
+        
+        # Active incident phase: High metrics and error rate
+        df.loc[start:start+duration, 'is_incident'] = 1
+        df.loc[start:start+duration, 'cpu_usage'] = np.random.uniform(90, 100, duration+1)
+        df.loc[start:start+duration, 'error_rate'] += np.random.uniform(5, 15, duration+1)
+        
     return df
 
 if __name__ == "__main__":
-    # Ensure the data directory exists
-    os.makedirs('../data', exist_ok=True)
+    # Path handling compatible with Docker and local environments
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    output_dir = os.path.join(BASE_DIR, 'data')
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Generate 15,000 minutes (~10.4 days) of data with 30 simulated outages
-    df_metrics = generate_synthetic_data(num_steps=15000, num_incidents=30)
-    
-    # Save raw data to CSV
-    output_path = '../data/synthetic_metrics.csv'
-    df_metrics.to_csv(output_path, index=False)
-    
-    print(f"Data generation complete! Saved to {output_path}")
+    dataset = generate_metrics_data()
+    dataset.to_csv(os.path.join(output_dir, 'synthetic_metrics.csv'), index=False)
+    print(f"Dataset saved to {output_dir}/synthetic_metrics.csv")

@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  alerting-pipeline:
+    build: .
+    volumes:
+      - ./figures:/app/figures
+      - ./data:/app/data
+      - ./models:/app/app/models
+    container_name: jetbrains_ml_project
