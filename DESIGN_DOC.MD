@@ -146,11 +146,6 @@ flowchart TD
     end
 ```
 
-### Key Design Decisions:
-* **Feature Aggregation:** Instead of feeding 30 raw minutes (120 dimensions) into the model, we compute statistical summaries (mean, std, min, max, diff). This mitigates the curse of dimensionality and helps tree-based models find split points easier.
-* **Strict Time-Based Split:** We explicitly set `shuffle=False` in `train_test_split`. Randomly shuffling time-series data causes *Data Leakage* (the model learns from future events to predict past events).
-* **PR AUC over Accuracy:** Because the dataset is highly imbalanced, Accuracy is misleading (always predicting "0" yields 95% accuracy). We use Precision-Recall AUC to measure how well the model handles the minority class (incidents) without generating alert fatigue.
-
 ---
 
 ## 5. Production Readiness & Future Work
