@@ -168,7 +168,6 @@ flowchart TD
 While this proof-of-concept successfully predicts synthetic incidents, deploying it to a real-world Kubernetes cluster requires addressing several system complexities.
 
 ```mermaid
-```mermaid
 flowchart TD
     %% Production styles
     classDef prod fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#000;
