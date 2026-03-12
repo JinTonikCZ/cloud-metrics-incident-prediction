@@ -168,28 +168,42 @@ flowchart TD
 While this proof-of-concept successfully predicts synthetic incidents, deploying it to a real-world Kubernetes cluster requires addressing several system complexities.
 
 ```mermaid
+```mermaid
 flowchart TD
     %% Production styles
     classDef prod fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#000;
     classDef issue fill:#fff3e0,stroke:#ff9800,stroke-width:2px,color:#000;
+    classDef note fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
 
     subgraph Future Production Architecture
+        N1[<b>Ingestion & Processing:</b><br>Live metrics from Prometheus/Datadog<br>are streamed via Kafka/Flink<br>for real-time feature extraction.]:::note
+        
         A1[Live Telemetry\nPrometheus / Datadog]:::prod --> B1{Stream Processing\nKafka / Flink}:::prod
         B1 --> C1[Dynamic Feature Extraction]:::prod
         
+        N1 -.-> A1
+
         %% Issue 1: Missing Data
         I1[Challenge: Dropped Packets]:::issue -.->|Needs Imputation| C1
         
+        N2[<b>Advanced Modeling:</b><br>Transitioning to Deep Learning<br>like LSTM or Transformers to dynamically<br>learn context length and patterns.]:::note
+
         C1 --> D1[Sequence Models\nLSTM / Transformers]:::prod
         
+        N2 -.-> D1
+
         %% Issue 2: Fixed Windows
         I2[Challenge: Variable Incident Speeds]:::issue -.->|Move away from fixed W=30| D1
-        
-        D1 --> E1[Alert Router\nPagerDuty]:::prod
-        
+
         %% Issue 3: Concept Drift
         I3[Challenge: Concept Drift\nNew deployments change metrics]:::issue -.->|Requires Online Learning| D1
+
+        N3[<b>Actionable Alerting:</b><br>Predictions trigger automated<br>incidents in PagerDuty for SREs.]:::note
+
+        D1 --> E1[Alert Router\nPagerDuty]:::prod
         
+        N3 -.-> E1
+
         %% Issue 4: Distributed Tracing
         I4[Challenge: Multi-node Causality]:::issue -.->|Requires Graph Networks| A1
     end
