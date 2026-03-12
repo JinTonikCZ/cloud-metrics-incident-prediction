@@ -111,3 +111,24 @@ docker-compose up --build
 * **CI/CD:** Automated testing via **GitHub Actions** on every push.
 * **Type Hinting:** Fully implemented for robust maintenance.
 * **Reproducibility:** Guaranteed by Docker containerization.
+
+## Project Structure
+
+The repository is organized to keep code separate from generated artifacts:
+
+```text
+.
+├── data/               # Input/Output data (ignored by git, use .gitkeep)
+├── figures/            # Generated performance plots (ignored by git)
+├── models/             # Serialized model files (.pkl) (ignored by git)
+├── notebooks/          # Analysis and exploration
+│   └── solution.ipynb  # Main walkthrough with pre-baked results
+├── src/                # Modular source code
+│   ├── generate_data.py
+│   ├── build_windows.py
+│   ├── train_model.py
+│   └── evaluate.py
+├── DESIGN_DOC.md       # Architecture and methodology
+├── Dockerfile          # Containerization for reproducibility
+├── requirements.txt    # Python dependencies
+└── README.md           # This file
