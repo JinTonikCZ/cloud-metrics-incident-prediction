@@ -96,11 +96,6 @@ In this stage, raw telemetry is transformed into structured features.
 * **Model Selection:** Random Forest was chosen for its ability to handle non-linear spikes and outliers.
 * **Business Value:** The output `risk_scores.png` proves the model crosses the Alerting Threshold (0.5) before the actual incident occurs, providing critical lead time.
 
-**Why Synthetic Data?**
-High-quality, labeled datasets of severe cloud infrastructure outages are rarely open-sourced due to strict NDAs and security policies. By synthesizing the data, we achieve:
-1. **Total Control:** We can programmatically define the exact lifecycle of an incident (normal state -> degradation -> active incident -> recovery).
-2. **Realistic Imbalance:** We explicitly engineered a realistic class imbalance (~95% normal, ~5% incidents) to properly test the model's alerting capabilities without artificial balancing.
-
 **How it's generated:** We use statistical distributions (Normal for CPU/Memory, Lognormal for Latency, Exponential for Error Rates) and inject programmatic spikes and trends to simulate failures.
 
 ## 4. Engineering Decisions
