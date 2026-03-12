@@ -40,6 +40,7 @@ graph TD
     %% Step 4: Quantifies performance using PR AUC and Risk Score timelines for business validation.
 ```
 *(Author's Original Diagram: High-level overview of the end-to-end data lifecycle)*
+
 Stage Overview & Commentary:
 This diagram illustrates the logical flow of information. The project begins with Simulation, creating a baseline of "ground truth". Engineering then distills this raw data into features. Training builds the predictive engine, and Evaluation proves its business value. This linear progression ensures that any change in the simulation is automatically reflected in the final evaluation metrics.
 
