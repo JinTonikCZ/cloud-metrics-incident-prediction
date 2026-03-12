@@ -19,24 +19,29 @@ The project deliberately relies on a robust, industry-standard data science stac
 ## 2. Overall High-Level Architecture
 Below is the macroscopic view of the project's lifecycle, from raw data generation to final business insights.
 
+
 ```mermaid
-flowchart LR
-    %% High-level architecture styles
-    classDef phase fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000;
-    classDef output fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
+graph TD
+    %% Global Styles with forced black text for professional look
+    classDef start fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000;
+    classDef process fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000;
 
-    A[1. Data Generation]:::phase --> B[2. Feature Engineering]:::phase
-    B --> C[3. Model Training]:::phase
-    C --> D[4. Evaluation & Insights]:::phase
+    A((Project Start)):::start --> B[Step 1: Simulation]:::process
+    B -->|Generates raw CSV telemetry| C[Step 2: Engineering]:::process
+    C -->|Calculates sliding windows| D[Step 3: Training]:::process
+    D -->|Saves serialized models| E[Step 4: Evaluation]:::process
+    E -->|Exports visual artifacts| F((Final Insights)):::output
 
-    D --> E((Actionable Alerts & Visuals)):::output
-
-    %% Comments
-    %% Phase 1 simulates the cloud environment
-    %% Phase 2 compresses time into logical features
-    %% Phase 3 applies Machine Learning
-    %% Phase 4 validates business value
+    %% Descriptive Comments (Author's technical notes)
+    %% Step 1: Mimics cloud infrastructure behavior and incident patterns based on statistical distributions.
+    %% Step 2: Transforms raw time-series into a supervised ML format (X, y) via windowing.
+    %% Step 3: Fits a Random Forest while strictly avoiding chronological data leakage (shuffle=False).
+    %% Step 4: Quantifies performance using PR AUC and Risk Score timelines for business validation.
 ```
+*(Author's Original Diagram: High-level overview of the end-to-end data lifecycle)*
+Stage Overview & Commentary:
+This diagram illustrates the logical flow of information. The project begins with Simulation, creating a baseline of "ground truth". Engineering then distills this raw data into features. Training builds the predictive engine, and Evaluation proves its business value. This linear progression ensures that any change in the simulation is automatically reflected in the final evaluation metrics.
 
 ---
 
