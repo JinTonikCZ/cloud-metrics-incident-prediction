@@ -117,36 +117,52 @@ We explicitly avoid random shuffling. In time-series tasks, shuffling causes **D
 Because the dataset is highly imbalanced, Accuracy is a misleading metric (always predicting "0" would yield 95% accuracy). We prioritize **Precision-Recall AUC** to measure how well the model handles the minority class (incidents) while minimizing "alert fatigue."
 
 ### 4.5 Pipeline Execution Flow
+
 ```mermaid
 flowchart TD
     %% Detailed pipeline styles
     classDef script fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
     classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
     classDef core fill:#ffebee,stroke:#d32f2f,stroke-width:2px,color:#000;
+    %% New Note Style (Yellow Sticky Note)
+    classDef note fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
 
     subgraph Data Processing
+        N1[<b>Data Processing Note:</b><br>Starts with generate_data.py 15,000 mins telemetry.<br>build_windows.py processes this raw stream,<br>applying a 30-min lookback for rolling statistics,<br>separating inputs and labels.]:::note
+        
         S1[generate_data.py]:::script -->|15,000 mins| D1[(synthetic_metrics.csv)]:::data
         D1 --> S2[build_windows.py]:::script
         S2 -->|Lookback W=30 mins| D2[(features.csv)]:::data
         S2 -->|Horizon H=10 mins| D3[(target.csv)]:::data
+        
+        N1 -.-> S1
     end
 
     subgraph Strict Training Logic
+        N2[<b>Strict Training Logic Note:</b><br>train_model.py applies the critical shuffle=False<br>time-based split. First 70% becomes Train Set,<br>remaining 30% is strictly isolated as Test Set.]:::note
+
         D2 --> S3[train_model.py]:::script
         D3 --> S3
         S3 -->|CRITICAL: shuffle=False| Split{Time-Based Split}:::core
         Split -->|First 70%| Train[(Train Set)]:::data
         Split -->|Last 30%| Test[(Test Set)]:::data
+        
+        N2 -.-> S3
     end
 
     subgraph Modeling & Output
+        N3[<b>Modeling & Output Note:</b><br>Random Forest learns patterns from Train Set.<br>evaluate.py tests model against unseen Test Set,<br>generating visual proofs PR Curve & Risk Timeline.]:::note
+
         Train --> M1[Random Forest]:::script
         Test --> S4[evaluate.py]:::script
         M1 --> S4
         S4 --> V1((PR Curve)):::data
         S4 --> V2((Risk Timeline)):::data
+        
+        N3 -.-> M1
     end
 ```
+(Author's Original Diagram: Step-by-step execution flow of the src/ directory with embedded logic notes)
 
 ## 5. Production Readiness & Future Work
 While this proof-of-concept successfully predicts synthetic incidents, deploying it to a real-world Kubernetes cluster requires addressing several system complexities.
