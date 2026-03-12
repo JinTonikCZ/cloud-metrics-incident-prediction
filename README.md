@@ -10,49 +10,14 @@ This task is formulated as a **binary classification problem over time-series da
 * **Goal:** Predict whether an incident will occur within the next **H** steps based on the previous **W** steps of system behavior.
 * **Input (Features):** Previous `W = 30` time steps (look-back window).
 * **Prediction Horizon (Target):** Next `H = 10` time steps.
-* **Output:**
-  * `1` — an incident **will occur** within the next H steps.
+* **Output:** * `1` — an incident **will occur** within the next H steps.
   * `0` — no incident will occur.
 * **Time Scale:** One time step represents **1 minute**.
 
 ---
 
-## 🛠 Project Structure
-```text
-predictive-alerting-cloud-metrics/
-├─ src/                        # Core Python modules with Type Hinting
-│  ├─ generate_data.py         # Synthetic telemetry generation
-│  ├─ build_windows.py         # Feature engineering (sliding windows)
-│  ├─ train_model.py           # Model training (Time-based split)
-│  └─ evaluate.py              # Performance metrics & plotting
-├─ notebooks/                  # Interactive analysis
-│  └─ solution.ipynb           # Final project walkthrough & visualizations
-├─ tests/                      # Quality Assurance
-│  └─ test_logic.py            # Unit tests for feature extraction logic
-├─ data/                       # Raw and processed datasets (CSV)
-├─ models/                     # Serialized model pipelines (.pkl)
-├─ figures/                    # PR Curves and Risk Timeline artifacts
-├─ DESIGN_DOC.MD               # Detailed architecture & design decisions
-├─ Dockerfile                  # Container definition for reproducibility
-├─ docker-compose.yml          # Multi-container orchestration
-├─ requirements.txt            # Project dependencies
-└─ README.md                   # Project overview and quick start
-```
-
-
----
-
-## 🚀 Quick Start (Docker)
-The easiest way to run the entire pipeline (data generation -> feature engineering -> training -> evaluation) is using Docker Compose:
-
-```bash
-docker-compose up --build
-```
-
----
-
 ## 🏗 Architecture Flow
-This diagram illustrates the high-level workflow and technical branching logic.
+This diagram illustrates the high-level project lifecycle and technical branching.
 
 ```mermaid
 flowchart TD
@@ -62,38 +27,38 @@ flowchart TD
     classDef logic fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
     classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
 
-    Start((Project Start)):::start --> Docker[Infrastructure: Docker Setup]:::process
-    Docker -->|Ensures reproducible environment| Gen[Step 1: Data Generation]:::process
+    Start((Project Start)):::start --> Docker[Setup Docker Environment]:::process
+    Docker -->|Ensures Reproducibility| Gen[Step 1 Data Generation]:::process
     
     Gen -->|Simulates 15k mins of telemetry| RawData[(synthetic_metrics.csv)]:::output
     
-    RawData --> Engineering[Step 2: Feature Engineering]:::process
-    Engineering -->|Extracts Mean/Std/Trend| Windows[Sliding Window Calculation]:::process
+    RawData --> Engineering[Step 2 Feature Engineering]:::process
+    Engineering -->|Extracts Mean Std Trend| Windows[Apply Sliding Window]:::process
     
-    Windows --> Branch{Data Ready?}:::logic
-    Branch -->|Yes| Split[Step 3: Time-Based Split]:::process
-    Branch -->|No: Needs Verification| Tests[Unit Testing: tests/]:::process
+    Windows --> Branch{Data Validation}:::logic
+    Branch -->|Validation Passed| Split[Step 3 Time-Based Split]:::process
+    Branch -->|Validation Failed| Tests[Run Unit Tests]:::process
     
-    Tests -->|If Logic Valid| Split
+    Tests -->|Tests Passed| Split
     
-    Split -->|CRITICAL: No Shuffling| Training[Step 4: Model Training]:::process
-    Training -->|Optimized for imbalance| ModelFile[models/random_forest_pipeline.pkl]:::output
+    Split -->|CRITICAL No Shuffling| Training[Step 4 Model Training]:::process
+    Training -->|Saves Best Pipeline| ModelFile[random_forest_pipeline.pkl]:::output
     
-    ModelFile --> Eval[Step 5: Performance Evaluation]:::process
-    Eval -->|Calculates PR AUC & Thresholds| Plots[Visual Reports: figures/]:::output
+    ModelFile --> Eval[Step 5 Evaluation]:::process
+    Eval -->|Generates PR AUC Metrics| Plots[Visual Reports]:::output
     
-    Plots --> Notebook[Final Presentation: solution.ipynb]:::process
-    Notebook --> End((Actionable Alerts Ready)):::start
+    Plots --> Notebook[Final Analysis solution.ipynb]:::process
+    Notebook --> End((System Ready)):::start
 ```
 
 ---
 
 ## 🔬 The Microscopic View
-Detailed module interaction and data transformation pipeline.
+Detailed module interaction and data transformation.
 
 ```mermaid
 flowchart TD
-    %% Colors
+    %% Colors and Styles
     classDef docker fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
     classDef script fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
     classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5;
@@ -101,9 +66,50 @@ flowchart TD
     classDef test fill:#fffde7,stroke:#fbc02d,stroke-width:2px;
 
     subgraph Container_Layer
-        D1[Dockerfile]:::docker -->|Builds env| Img(Python 3.9 Image):::docker
-        D2[docker-compose.yml]:::docker -->|Mounts volumes| Img
+        D1[Dockerfile]:::docker -->|Builds Environment| Img{Python 3.9 Image}:::docker
+        D2[docker-compose.yml]:::docker -->|Mounts Data Volumes| Img
     end
 
-    subgraph Data_Science_Layer
-        S1[generate_data.py]:::script -->
+    subgraph Data_Engineering_Layer
+        S1[generate_data.py]:::script -->|Saves Raw Telemetry| DA1[(synthetic_metrics.csv)]:::data
+        
+        DA1 --> S2[build_windows.py]:::script
+        S2 -->|Statistical Aggregation| S2_F[Calculates Mean Std Trend]:::script
+        
+        S2_F --> DA2[(features.csv)]:::data
+        S2_F --> DA3[(target.csv)]:::data
+        
+        S2_F -.->|Logic Check| T1[tests/test_logic.py]:::test
+    end
+
+    subgraph ML_Training_Layer
+        DA2 --> S3[train_model.py]:::script
+        DA3 --> S3
+        
+        S3 -->|Chronological Split| TSet[(Train and Test Sets)]:::data
+        TSet -->|Fits Model| RF[Random Forest Classifier]:::model
+        
+        RF -->|Serializes Pipeline| MO1[random_forest_pipeline.pkl]:::model
+    end
+
+    subgraph Monitoring_Layer
+        MO1 --> S4[evaluate.py]:::script
+        S4 -->|Primary Performance Metric| M1{PR AUC Score}:::model
+        S4 -->|Saves Visual Artifacts| M2[(figures/risk_scores.png)]:::data
+    end
+```
+
+---
+
+## 🚀 Quick Start (Docker)
+Run the entire pipeline with one command:
+
+```bash
+docker-compose up --build
+```
+
+## 🧪 Quality Assurance
+* **Unit Testing:** `python -m unittest discover tests`
+* **CI/CD:** Automated testing via **GitHub Actions** on every push.
+* **Type Hinting:** Fully implemented for robust maintenance.
+* **Reproducibility:** Guaranteed by Docker containerization.
