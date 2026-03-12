@@ -146,6 +146,7 @@ flowchart TD
         S4 --> V1((PR Curve)):::data
         S4 --> V2((Risk Timeline)):::data
     end
+```
 
 ## 5. Production Readiness & Future Work
 While this proof-of-concept successfully predicts synthetic incidents, deploying it to a real-world Kubernetes cluster requires addressing several system complexities.
