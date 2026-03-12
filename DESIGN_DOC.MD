@@ -81,24 +81,20 @@ flowchart TD
     end
 ```
 
-Technical Commentary on Pipeline Stages:
-A. Data Processing & Logic
-In this stage, raw telemetry is transformed into structured features.
+### Technical Commentary on Pipeline Stages:
 
-Key Innovation: Instead of feeding raw noise, we use a 30-minute rolling window to calculate "momentum" (Trend) and "volatility" (Std).
+#### A. Data Processing & Logic
+In this stage, raw telemetry is transformed into structured features. 
+* **Key Innovation:** Instead of feeding raw noise, we use a 30-minute rolling window to calculate "momentum" (Trend) and "volatility" (Std). 
+* **Reliability:** Verified by `test_logic.py` to prevent "garbage-in, garbage-out" scenarios.
 
-Reliability: Verified by test_logic.py to prevent "garbage-in, garbage-out" scenarios.
+#### B. Strict Training Logic (Anti-Leakage)
+* **The Problem:** Random shuffling would allow the model to learn from "future" data.
+* **The Solution:** A strict chronological split. The model is trained on the past and tested on the unseen future.
 
-B. Strict Training Logic (Anti-Leakage)
-The Problem: Random shuffling would allow the model to learn from "future" data.
-
-The Solution: A strict chronological split. The model is trained on the past and tested on the unseen future.
-
-C. Modeling & Insight Generation
-Model Selection: Random Forest was chosen for its ability to handle non-linear spikes.
-
-Business Value: The output risk_scores.png proves the model crosses the Alerting Threshold (0.5) before the actual incident occurs.
-
+#### C. Modeling & Insight Generation
+* **Model Selection:** Random Forest was chosen for its ability to handle non-linear spikes and outliers.
+* **Business Value:** The output `risk_scores.png` proves the model crosses the Alerting Threshold (0.5) before the actual incident occurs, providing critical lead time.
 
 **Why Synthetic Data?**
 High-quality, labeled datasets of severe cloud infrastructure outages are rarely open-sourced due to strict NDAs and security policies. By synthesizing the data, we achieve:
