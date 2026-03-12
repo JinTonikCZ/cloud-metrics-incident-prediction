@@ -100,6 +100,8 @@ In this stage, raw telemetry is transformed into structured features.
 
 ## 4. Engineering Decisions
 
+*(The technical choices detailed below are visually summarized in the **Pipeline Execution Flow** diagram at the end of this section).*
+
 ### 4.1 Data Strategy: Why Synthetic Data?
 High-quality, labeled datasets of severe cloud infrastructure outages are rarely open-sourced due to strict NDAs. By synthesizing the data, we achieve:
 1. **Total Control:** We can programmatically define the exact lifecycle of an incident (normal state -> degradation -> active incident -> recovery).
@@ -114,6 +116,7 @@ We explicitly avoid random shuffling. In time-series tasks, shuffling causes **D
 ### 4.4 PR AUC over Accuracy
 Because the dataset is highly imbalanced, Accuracy is a misleading metric (always predicting "0" would yield 95% accuracy). We prioritize **Precision-Recall AUC** to measure how well the model handles the minority class (incidents) while minimizing "alert fatigue."
 
+### 4.5 Pipeline Execution Flow
 ```mermaid
 flowchart TD
     %% Detailed pipeline styles
@@ -133,8 +136,7 @@ flowchart TD
         D3 --> S3
         S3 -->|CRITICAL: shuffle=False| Split{Time-Based Split}:::core
         Split -->|First 70%| Train[(Train Set)]:::data
-        Split -->|Next 15%| Val[(Validation Set)]:::data
-        Split -->|Last 15%| Test[(Test Set)]:::data
+        Split -->|Last 30%| Test[(Test Set)]:::data
     end
 
     subgraph Modeling & Output
@@ -144,9 +146,6 @@ flowchart TD
         S4 --> V1((PR Curve)):::data
         S4 --> V2((Risk Timeline)):::data
     end
-```
-
----
 
 ## 5. Production Readiness & Future Work
 While this proof-of-concept successfully predicts synthetic incidents, deploying it to a real-world Kubernetes cluster requires addressing several system complexities.
