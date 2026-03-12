@@ -128,7 +128,7 @@ flowchart TD
     classDef note fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
 
     subgraph Data Processing
-        N1[<br>Starts with generate_data.py 15,000 mins telemetry.<br>build_windows.py processes this raw stream,<br>applying a 30-min lookback for rolling statistics,<br>separating inputs and labels.]:::note
+        N1[Starts with generate_data.py 15,000 mins telemetry.<br>build_windows.py processes this raw stream,<br>applying a 30-min lookback for rolling statistics,<br>separating inputs and labels.]:::note
         
         S1[generate_data.py]:::script -->|15,000 mins| D1[(synthetic_metrics.csv)]:::data
         D1 --> S2[build_windows.py]:::script
@@ -139,7 +139,7 @@ flowchart TD
     end
 
     subgraph Strict Training Logic
-        N2[<b>Strict Training Logic Note:</b><br>train_model.py applies the critical shuffle=False<br>time-based split. First 70% becomes Train Set,<br>remaining 30% is strictly isolated as Test Set.]:::note
+        N2[train_model.py applies the critical shuffle=False<br>time-based split. First 70% becomes Train Set,<br>remaining 30% is strictly isolated as Test Set.]:::note
 
         D2 --> S3[train_model.py]:::script
         D3 --> S3
@@ -151,7 +151,7 @@ flowchart TD
     end
 
     subgraph Modeling & Output
-        N3[<b>Modeling & Output Note:</b><br>Random Forest learns patterns from Train Set.<br>evaluate.py tests model against unseen Test Set,<br>generating visual proofs PR Curve & Risk Timeline.]:::note
+        N3[Random Forest learns patterns from Train Set.<br>evaluate.py tests model against unseen Test Set,<br>generating visual proofs PR Curve & Risk Timeline.]:::note
 
         Train --> M1[Random Forest]:::script
         Test --> S4[evaluate.py]:::script
