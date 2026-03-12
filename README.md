@@ -21,60 +21,60 @@ This diagram illustrates the high-level project lifecycle and technical branchin
 
 ```mermaid
 flowchart TD
-    %% Global Styles
-    classDef start fill:#f5f5f5,stroke:#333,stroke-width:2px;
-    classDef process fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef logic fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
-    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    %% Global Styles with forced black text for readability
+    classDef start fill:#f5f5f5,stroke:#333,stroke-width:2px,color:#000;
+    classDef process fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000;
+    classDef logic fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000;
+    classDef output fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000;
 
-    Start((Project Start)):::start --> Docker[Setup Docker Environment]:::process
+    Start[Project Start]:::start --> Docker[Setup Docker Environment]:::process
     Docker -->|Ensures Reproducibility| Gen[Step 1 Data Generation]:::process
     
-    Gen -->|Simulates 15k mins of telemetry| RawData[(synthetic_metrics.csv)]:::output
+    Gen -->|Simulates telemetry| RawData[(synthetic_metrics.csv)]:::output
     
     RawData --> Engineering[Step 2 Feature Engineering]:::process
-    Engineering -->|Extracts Mean Std Trend| Windows[Apply Sliding Window]:::process
+    Engineering -->|Extracts Statistics| Windows[Apply Sliding Window]:::process
     
     Windows --> Branch{Data Validation}:::logic
-    Branch -->|Validation Passed| Split[Step 3 Time-Based Split]:::process
-    Branch -->|Validation Failed| Tests[Run Unit Tests]:::process
+    Branch -->|Passed| Split[Step 3 Time-Based Split]:::process
+    Branch -->|Failed| Tests[Run Unit Tests]:::process
     
     Tests -->|Tests Passed| Split
     
-    Split -->|CRITICAL No Shuffling| Training[Step 4 Model Training]:::process
-    Training -->|Saves Best Pipeline| ModelFile[random_forest_pipeline.pkl]:::output
+    Split -->|No Shuffling| Training[Step 4 Model Training]:::process
+    Training -->|Saves Pipeline| ModelFile[random_forest_pipeline.pkl]:::output
     
     ModelFile --> Eval[Step 5 Evaluation]:::process
-    Eval -->|Generates PR AUC Metrics| Plots[Visual Reports]:::output
+    Eval -->|Generates Metrics| Plots[Visual Reports]:::output
     
     Plots --> Notebook[Final Analysis solution.ipynb]:::process
-    Notebook --> End((System Ready)):::start
+    Notebook --> End[System Ready]:::start
 ```
 
 ---
 
 ## 🔬 The Microscopic View
-Detailed module interaction and data transformation.
+Detailed module interaction and data transformation pipeline.
 
 ```mermaid
 flowchart TD
-    %% Colors and Styles
-    classDef docker fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
-    classDef script fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-    classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef test fill:#fffde7,stroke:#fbc02d,stroke-width:2px;
+    %% Colors and Styles with forced black text
+    classDef docker fill:#fce4ec,stroke:#d81b60,stroke-width:2px,color:#000;
+    classDef script fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000;
+    classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 5 5,color:#000;
+    classDef model fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000;
+    classDef test fill:#fffde7,stroke:#fbc02d,stroke-width:2px,color:#000;
 
     subgraph Container_Layer
-        D1[Dockerfile]:::docker -->|Builds Environment| Img{Python 3.9 Image}:::docker
-        D2[docker-compose.yml]:::docker -->|Mounts Data Volumes| Img
+        D1[Dockerfile]:::docker -->|Builds Env| Img[Python 3.9 Image]:::docker
+        D2[docker-compose.yml]:::docker -->|Mounts Volumes| Img
     end
 
     subgraph Data_Engineering_Layer
-        S1[generate_data.py]:::script -->|Saves Raw Telemetry| DA1[(synthetic_metrics.csv)]:::data
+        S1[generate_data.py]:::script -->|Saves Raw Data| DA1[(synthetic_metrics.csv)]:::data
         
         DA1 --> S2[build_windows.py]:::script
-        S2 -->|Statistical Aggregation| S2_F[Calculates Mean Std Trend]:::script
+        S2 -->|Extract Features| S2_F[Calculates Statistics]:::script
         
         S2_F --> DA2[(features.csv)]:::data
         S2_F --> DA3[(target.csv)]:::data
@@ -87,19 +87,17 @@ flowchart TD
         DA3 --> S3
         
         S3 -->|Chronological Split| TSet[(Train and Test Sets)]:::data
-        TSet -->|Fits Model| RF[Random Forest Classifier]:::model
+        TSet -->|Fits Model| RF[Random Forest]:::model
         
-        RF -->|Serializes Pipeline| MO1[random_forest_pipeline.pkl]:::model
+        RF -->|Serializes| MO1[random_forest_pipeline.pkl]:::model
     end
 
     subgraph Monitoring_Layer
         MO1 --> S4[evaluate.py]:::script
-        S4 -->|Primary Performance Metric| M1{PR AUC Score}:::model
-        S4 -->|Saves Visual Artifacts| M2[(figures/risk_scores.png)]:::data
+        S4 -->|Metric| M1[PR AUC Score]:::model
+        S4 -->|Saves Plots| M2[(figures/risk_scores.png)]:::data
     end
 ```
-
----
 
 ## 🚀 Quick Start (Docker)
 Run the entire pipeline with one command:
