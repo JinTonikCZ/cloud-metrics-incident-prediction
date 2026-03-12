@@ -128,7 +128,7 @@ flowchart TD
     classDef note fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
 
     subgraph Data Processing
-        N1[<b>Data Processing Note:</b><br>Starts with generate_data.py 15,000 mins telemetry.<br>build_windows.py processes this raw stream,<br>applying a 30-min lookback for rolling statistics,<br>separating inputs and labels.]:::note
+        N1[<br>Starts with generate_data.py 15,000 mins telemetry.<br>build_windows.py processes this raw stream,<br>applying a 30-min lookback for rolling statistics,<br>separating inputs and labels.]:::note
         
         S1[generate_data.py]:::script -->|15,000 mins| D1[(synthetic_metrics.csv)]:::data
         D1 --> S2[build_windows.py]:::script
